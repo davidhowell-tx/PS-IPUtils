@@ -6,6 +6,9 @@ This module was born out of necessity to:
 
 I also took this as an opportunity to play with PowerShell classes, therefore the majority of the code for this module is within the classes themselves.
 
+# Install / Uninstall
+I've provided a simple script that copies to your PSModulePath, as well as an uninstall script to remove it.
+
 # Create an IP Address object
 ```
 PS > Get-IPAddress "192.168.1.50"
@@ -13,6 +16,15 @@ PS > Get-IPAddress "192.168.1.50"
 Address      DecimalAddress
 -------      --------------
 192.168.1.50     3232235826
+```
+
+or alternatively
+```
+PS > Get-IPAddress 3232235777
+
+Address     DecimalAddress
+-------     --------------
+192.168.1.1     3232235777
 ```
 
 # Create a Subnet object
