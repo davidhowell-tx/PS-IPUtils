@@ -79,6 +79,88 @@ class IPv4Address {
     }
 }
 
+class IPv4Range {
+    # Properties
+    [IPv4Address]$IPRangeStart
+    [IPv4Address]$IPRangeEnd
+    [Uint32]$NumberOfHosts
+
+    # Constructors
+    # PS > New-Object IPv4Range ("192.168.1.50", "192.168.1.100")
+    IPv4Range([String]$StartIPAddress,[String]$EndIPAddress) {
+        # Validate the input IP Addresses before proceeding
+        if ($StartIPAddress -notmatch "^((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))?$" `
+         -or $EndIPAddress -notmatch "^((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))?$") {
+            Write-Error -ErrorAction Stop -Message "Unable to identify input values as IP Addresses"
+        }
+        [IPv4Address]$StartIP = $StartIPAddress
+        [IPv4Address]$EndIP = $EndIPAddress
+
+        if ($EndIP.DecimalAddress -lt $StartIP.DecimalAddress) {
+            $Start = $EndIP
+            $End = $StartIP
+        } else {
+            $Start = $StartIP
+            $End = $EndIP
+        }
+
+        $RangeDifference = $End.DecimalAddress - $Start.DecimalAddress + 1
+        Write-Verbose -Message "Supplied IPv4 Range contains $RangeDifference hosts."
+
+        $this.IPRangeStart = $Start
+        $this.IPRangeEnd = $End
+        $this.NumberOfHosts = $RangeDifference
+    }
+
+    # Methods
+    # PS > $IPv4Range.ToString()
+    #   192.168.1.50 - 192.168.1.100
+    [String] ToString() {
+        return "$($this.IPRangeStart) - $($this.IPRangeEnd)"
+    }
+
+    # Determine if two IPv4Range objects define the same IP Range
+    # PS > $IPv4Range1.Is($IPv4Range2)
+    #   True
+    [Boolean] Is([IPv4Range]$IPv4Range) {
+        Write-Verbose "Determining if IPv4 ranges $this and $IPv4Range are the same"
+        if ($this.IPRangeStart.DecimalAddress -eq $IPv4Range.IPRangeStart.DecimalAddress -and $this.IPRangeEnd.DecimalAddress -eq $IPv4Range.IPRangeEnd.DecimalAddress) {
+            return $True
+        }
+        return $False
+    }
+
+    # Determine if $this IPv4 Range contains the supplied IP address
+    # PS > $IPv4Range = New-Object IPv4Range ("192.168.1.50", "192.168.1.100")
+    # PS > $IP = New-Object IPv4Address ("192.168.1.75")
+    # PS > $IPv4Range.Contains($IP)
+    #   True
+    [Boolean] Contains([IPv4Address]$IPAddress) {
+        Write-Verbose "Determining if $IPAddress is located within $this"
+        if ($IPAddress.DecimalAddress -ge $this.IPRangeStart.DecimalAddress -and $IPAddress.DecimalAddress -le $this.IPRangeEnd.DecimalAddress) {
+            return $True
+        }
+        return $False
+    }
+
+    # PS > $IPv4Range = New-Object IPv4Range ("192.168.1.50", "192.168.1.100")
+    # PS > $IPv4Range.Contains("192.168.1.75")
+    #   True
+    [Boolean] Contains([String]$IPAddress) {
+        # Validate the input IP Address before proceeding
+        if ($IPAddress -notmatch "^((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))?$") {
+            Write-Error -ErrorAction Stop -Message "Unable to identify input value as an IP Address"
+        }
+        [IPv4Address]$IP = $IPAddress
+
+        Write-Verbose "Determining if $IP is located within $this"
+        if ($IP.DecimalAddress -ge $this.IPRangeStart.DecimalAddress -and $IP.DecimalAddress -le $this.IPRangeEnd.DecimalAddress) {
+            return $True
+        }
+        return $False
+    }
+}
+
 class Subnet {
     # Properties
     [String]$CIDRNotation
@@ -412,6 +494,7 @@ class Subnet {
         }
         return $False
     }
+
     # PS > $Subnet = New-Object Subnet ("192.168.1.1/24")
     # PS > $Subnet.Contains("192.168.1.50")
     #   True
@@ -446,6 +529,29 @@ class Subnet {
             $Overlaps = $True
         }
         if ($Subnet.DecimalRangeStart -le $this.DecimalRangeEnd -and $this.DecimalRangeEnd -le $Subnet.DecimalRangeEnd) {
+            $Overlaps = $True
+        }
+
+        return $Overlaps
+    }
+
+    # Determine if a subnet and IP range overlap
+    [Boolean] Overlaps([IPv4Range]$IPv4Range) {
+        Write-Verbose "Determining if subnets $this and $IPv4Range overlap"
+        $Overlaps = $False
+        # Check if the start or stop addresses for the supplied range falls within the range of $this
+        if ($this.DecimalRangeStart -le $IPv4Range.IPRangeStart.DecimalAddress -and $IPv4Range.IPRangeEnd.DecimalAddress -le $this.DecimalRangeEnd) {
+            $Overlaps = $True
+        }
+        if ($this.DecimalRangeStart -le $IPv4Range.IPRangeEnd.DecimalAddress -and $IPv4Range.IPRangeEnd.DecimalAddress -le $this.DecimalRangeEnd) {
+            $Overlaps = $True
+        }
+        
+        # Check if the Range Start or Stop for $this falls within the range of the supplied subnet
+        if ($IPv4Range.IPRangeStart.DecimalAddress -le $this.DecimalRangeStart -and $this.DecimalRangeStart -le $IPv4Range.IPRangeEnd.DecimalAddress) {
+            $Overlaps = $True
+        }
+        if ($IPv4Range.IPRangeStart.DecimalAddress -le $this.DecimalRangeEnd -and $this.DecimalRangeEnd -le $IPv4Range.IPRangeEnd.DecimalAddress) {
             $Overlaps = $True
         }
 

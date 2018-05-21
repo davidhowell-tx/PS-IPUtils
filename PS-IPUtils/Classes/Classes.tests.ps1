@@ -216,6 +216,100 @@ Describe "IPv4Address Class" {
     }
 }
 
+Describe "IPv4Range Class" {
+    Describe "IPv4Range([String]`$StartIPAddress,[String]`$EndIPAddress)" {
+        Describe "Class Constructor" {
+            It "Constructs with 192.168.1.1 and 192.168.1.254" {
+                New-Object IPv4Range "192.168.1.1", "192.168.1.254"
+            }
+            It "Constructs with 192.168.1.50 and 192.168.1.100" {
+                New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+            }
+            It "Constrcuts with 192.168.1.75 and 192.168.1.50 (reverse order)" {
+                New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+            }
+            It "Does not construct with an invalid IP Address" {
+                {
+                    New-Object Subnet "192.168.1.1", "192.168.1.256"
+                } | Should -Throw "Unable to identify input values as IP Addresses"
+            }
+        }
+
+        Describe "Class Methods" {
+            Context "[String] ToString()" {
+                It "Does not throw an error" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IPv4Range.ToString()
+                }
+                It "Returns appropriate value" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IPv4Range.ToString() | Should -Be "192.168.1.50 - 192.168.1.100"
+                }
+                It "Returns appropriate value with reversed inputs" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.100", "192.168.1.50"
+                    $IPv4Range.ToString() | Should -Be "192.168.1.50 - 192.168.1.100"
+                }
+            }
+
+            Context "[Boolean] Is([IPv4Range]`$IPv4Range)" {
+                It "Does not throw an error" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IPv4Range2 = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IPv4Range.Is($IPv4Range2)
+                }
+                It "Returns true with the same range" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IPv4Range2 = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IPv4Range.Is($IPv4Range2) | Should -Be $True
+                }
+                It "Returns false with different range" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IPv4Range2 = New-Object IPv4Range "192.168.2.50", "192.168.2.100"
+                    $IPv4Range.Is($IPv4Range2) | Should -Be $False
+                }
+            }
+
+            Context "[Boolean] Contains([IPv4Address]`$IPAddress)" {
+                It "Does not throw an error" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IP = New-Object IPv4Address "192.168.1.75"
+                    $IPv4Range.Contains($IP)
+                }
+                It "Returns true with an IP in the range" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IP = New-Object IPv4Address "192.168.1.75"
+                    $IPv4Range.Contains($IP) | Should -Be $True
+                }
+                It "Returns false with an IP not in the range" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IP = New-Object IPv4Address "192.168.2.75"
+                    $IPv4Range.Contains($IP) | Should -Be $False
+                }
+            }
+
+            Context "[Boolean] Contains([String]`$IPAddress)" {
+                It "Does not throw an error" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IPv4Range.Contains("192.168.1.75")
+                }
+                It "Throws an error with an invalid IP Address String" {
+                    {
+                        $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                        $IPv4Range.Contains("192.168.1.256")
+                    } | Should -Throw "Unable to identify input value as an IP Address"
+                }
+                It "Returns true with an IP in the range" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IPv4Range.Contains("192.168.1.50") | Should -Be $True
+                }
+                It "Returns false with an IP not in the range" {
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $IPv4Range.Contains("192.168.2.50") | Should -Be $False
+                }
+            }
+        }
+    }
+}
 Describe "Subnet Class" {
     Describe "Subnet([String]`$StartIPAddress,[String]`$EndIPAddress)" {
         Describe "Class Constructor" {
@@ -333,10 +427,43 @@ Describe "Subnet Class" {
                     $Subnet2 = New-Object Subnet "192.168.0.1", "192.168.1.254"
                     $Subnet.Overlaps($Subnet2) | Should -Be $True
                 }
-                It "Returns false with a different subnet" {
+                It "Returns false with a non-overlapping subnets" {
                     $Subnet = New-Object Subnet "192.168.1.1", "192.168.1.254"
                     $Subnet2 = New-Object Subnet "192.168.2.1", "192.168.2.254"
                     $Subnet.Overlaps($Subnet2) | Should -Be $False
+                }
+            }
+
+            Context "[Boolean] Overlaps([IPv4Range]`$IPv4Range)" {
+                It "Does not throw an error" {
+                    $Subnet = New-Object Subnet "192.168.1.1", "192.168.1.254"
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.100"
+                    $Subnet.Overlaps($IPv4Range)
+                }
+                It "Returns true with the same subnet" {
+                    $Subnet = New-Object Subnet "192.168.1.1", "192.168.1.254"
+                    $IPv4Range = New-Object IPv4Range "192.168.1.1", "192.168.1.254"
+                    $Subnet.Overlaps($IPv4Range) | Should -Be True
+                }
+                It "Returns true with a smaller completely contained range" {
+                    $Subnet = New-Object Subnet "192.168.1.1", "192.168.1.254"
+                    $IPv4Range = New-Object IPv4Range "192.168.1.50", "192.168.1.75"
+                    $Subnet.Overlaps($IPv4Range) | Should -Be $True
+                }
+                It "Returns true with a range overlapping subnet start" {
+                    $Subnet = New-Object Subnet "192.168.1.1", "192.168.1.254"
+                    $IPv4Range = New-Object IPv4Range "192.168.0.200", "192.168.1.50"
+                    $Subnet.Overlaps($IPv4Range) | Should -Be $True
+                }
+                It "Returns true with a range overlapping subnet end" {
+                    $Subnet = New-Object Subnet "192.168.1.1", "192.168.1.254"
+                    $IPv4Range = New-Object IPv4Range "192.168.1.200", "192.168.2.50"
+                    $Subnet.Overlaps($IPv4Range) | Should -Be $True
+                }
+                It "Returns false with a non-overlapping range and subnet" {
+                    $Subnet = New-Object Subnet "192.168.1.1", "192.168.1.254"
+                    $IPv4Range = New-Object IPv4Range "192.168.2.50", "192.168.2.75"
+                    $Subnet.Overlaps($IPv4Range) | Should -Be $False
                 }
             }
         }
